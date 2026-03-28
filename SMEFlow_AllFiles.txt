@@ -1,0 +1,3154 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║           SMEFlow — All Source Files (44 files)                     ║
+║           Integrated CRM, Workflow & Automation Platform            ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+HOW TO USE:
+  1. Create the folder structure manually or run the bootstrap script below
+  2. Copy each file's contents into the correct path
+  3. cd backend && npm install && npm run dev
+  4. cd frontend && npm install && npm start
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUICK BOOTSTRAP (run in terminal to create all directories):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+mkdir -p smeflow/{backend/src/{controllers,models,routes,services,middleware,utils},frontend/src/{pages,components,services,context},frontend/public}
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 1 of 44: README.md
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# SMEFlow — Integrated CRM, Workflow & Automation Platform
+
+A production-grade full-stack prototype built with Node.js/Express, MongoDB/Mongoose, and React. Demonstrates modular backend architecture, JWT authentication, relational data modeling, and scheduled automation.
+
+---
+
+## Tech Stack
+
+| Layer      | Technology                              |
+|------------|----------------------------------------|
+| Backend    | Node.js 18+, Express.js 4             |
+| Database   | MongoDB 6+ with Mongoose ODM           |
+| Auth       | JWT (jsonwebtoken) + bcryptjs          |
+| Validation | express-validator                      |
+| Scheduling | node-cron                              |
+| Logging    | Winston                                |
+| Frontend   | React 18, React Router 6, Axios        |
+
+---
+
+## Project Structure
+
+```
+smeflow/
+├── backend/
+│   ├── src/
+│   │   ├── controllers/        # HTTP layer — parse req, call service, send res
+│   │   │   ├── authController.js
+│   │   │   ├── customerController.js
+│   │   │   ├── taskController.js
+│   │   │   └── invoiceController.js
+│   │   ├── models/             # Mongoose schemas & virtuals
+│   │   │   ├── User.js
+│   │   │   ├── Customer.js
+│   │   │   ├── Task.js
+│   │   │   └── Invoice.js
+│   │   ├── routes/             # Express routers with validation chains
+│   │   │   ├── auth.js
+│   │   │   ├── customers.js
+│   │   │   ├── tasks.js
+│   │   │   ├── invoices.js
+│   │   │   └── automation.js
+│   │   ├── services/           # Business logic, isolated from HTTP
+│   │   │   ├── authService.js
+│   │   │   ├── customerService.js
+│   │   │   ├── taskService.js
+│   │   │   ├── invoiceService.js
+│   │   │   └── automationService.js   ← cron + escalation logic
+│   │   ├── middleware/
+│   │   │   ├── auth.js         # JWT protect + restrictTo RBAC
+│   │   │   ├── errorHandler.js # Global error normalization
+│   │   │   └── validate.js     # express-validator result handler
+│   │   ├── utils/
+│   │   │   ├── logger.js       # Winston logger (console + file)
+│   │   │   ├── AppError.js     # Operational error class
+│   │   │   └── asyncHandler.js # Eliminates try/catch boilerplate
+│   │   ├── app.js              # Express app setup (no DB logic)
+│   │   └── index.js            # DB connect + server start + graceful shutdown
+│   ├── .env.example
+│   └── package.json
+│
+└── frontend/
+    ├── public/
+    │   └── index.html
+    ├── src/
+    │   ├── context/
+    │   │   └── AuthContext.js  # React auth state + localStorage persistence
+    │   ├── services/
+    │   │   └── api.js          # Axios instance with JWT interceptor
+    │   ├── components/
+    │   │   ├── Layout.js       # Sidebar shell
+    │   │   ├── ProtectedRoute.js
+    │   │   └── UI.js           # Badge, Modal, EmptyState, Spinner, Alert
+    │   ├── pages/
+    │   │   ├── AuthPage.js     # Login + Signup (toggled)
+    │   │   ├── Dashboard.js    # Stats + task breakdown + recent invoices
+    │   │   ├── CustomersPage.js
+    │   │   ├── TasksPage.js    # Filter by status, inline status editing
+    │   │   └── InvoicesPage.js # Inline status dropdown, filter tabs
+    │   ├── App.js              # Router + AuthProvider
+    │   ├── index.js
+    │   └── index.css           # Design system (CSS variables, dark theme)
+    └── package.json
+```
+
+---
+
+## Setup & Running
+
+### Prerequisites
+- Node.js 18+
+- MongoDB running locally (`mongod`) or a MongoDB Atlas URI
+
+### Backend
+
+```bash
+cd backend
+cp .env.example .env
+# Edit .env — set MONGODB_URI and JWT_SECRET
+npm install
+npm run dev         # nodemon, hot-reload on :5000
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm start           # CRA dev server on :3000, proxied to :5000
+```
+
+The `"proxy": "http://localhost:5000"` in `frontend/package.json` routes all `/api/*` calls to the backend during development.
+
+---
+
+## API Reference
+
+All endpoints are prefixed `/api/v1`. Protected routes require:
+```
+Authorization: Bearer <jwt_token>
+```
+
+### Auth
+| Method | Endpoint         | Auth | Description        |
+|--------|-----------------|------|--------------------|
+| POST   | /auth/signup    | No   | Register user      |
+| POST   | /auth/login     | No   | Login, get JWT     |
+| GET    | /auth/me        | Yes  | Current user info  |
+
+### Customers
+| Method | Endpoint          | Description                        |
+|--------|------------------|------------------------------------|
+| GET    | /customers        | List (pagination, search)          |
+| POST   | /customers        | Create customer                    |
+| GET    | /customers/:id    | Get with tasks + invoices          |
+| PATCH  | /customers/:id    | Update fields                      |
+| DELETE | /customers/:id    | Soft delete (isActive: false)      |
+
+### Tasks
+| Method | Endpoint      | Description                             |
+|--------|-------------|-----------------------------------------|
+| GET    | /tasks       | List (filter: status, priority, assignedTo, customer) |
+| POST   | /tasks       | Create linked to customer + user        |
+| GET    | /tasks/:id   | Get with populated refs                 |
+| PATCH  | /tasks/:id   | Update status / priority / any field   |
+| DELETE | /tasks/:id   | Hard delete                             |
+
+### Invoices
+| Method | Endpoint                    | Description                     |
+|--------|----------------------------|---------------------------------|
+| GET    | /invoices                   | List (filter: status, customer) |
+| POST   | /invoices                   | Create (auto-assigns INV-XXXXX) |
+| GET    | /invoices/:id               | Get with customer details       |
+| PATCH  | /invoices/:id               | Update status (sets paidAt if PAID) |
+| GET    | /invoices/dashboard/stats   | Aggregate counts + revenue      |
+
+### Automation (Admin Only)
+| Method | Endpoint                        | Description                          |
+|--------|--------------------------------|--------------------------------------|
+| POST   | /automation/run-escalation      | Manually trigger overdue escalation  |
+
+---
+
+## Automation — Overdue Task Escalation
+
+Defined in `src/services/automationService.js`:
+
+```js
+// Runs daily at midnight (configurable via CRON_SCHEDULE env var)
+cron.schedule('0 0 * * *', async () => {
+  await Task.updateMany(
+    { dueDate: { $lt: now }, status: { $nin: ['COMPLETED', 'OVERDUE'] } },
+    { $set: { status: 'OVERDUE', priority: 'HIGH_PRIORITY', autoEscalatedAt: now } }
+  );
+});
+```
+
+- Compound index on `{ dueDate: 1, status: 1 }` makes the query efficient at scale
+- `escalateOverdueTasks()` is extracted from the cron callback → testable in isolation
+- Admin can trigger manually via `POST /api/v1/automation/run-escalation`
+
+---
+
+## Data Relationships
+
+```
+User ──────────────── creates ──→ Customer
+User ──────────────── assignedTo ──→ Task
+Customer ──────────── has many ──→ Task
+Customer ──────────── has many ──→ Invoice
+```
+
+Mongoose virtuals on `Customer` populate `tasks` and `invoices` when you call `getCustomerById` — avoiding denormalization while keeping queries clean.
+
+---
+
+## Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Services layer | Controllers stay thin (parse → call → respond). Business logic is portable and testable without HTTP. |
+| `asyncHandler` wrapper | Removes repetitive try/catch from every controller. Errors propagate to the global handler. |
+| `AppError` class | Distinguishes operational errors (user-facing, known status codes) from programmer errors (500s). |
+| Soft delete on Customer | Preserves referential integrity — tasks/invoices linked to the customer remain intact. |
+| `select: false` on password | Password hash is never accidentally serialized into API responses. |
+| Separated `app.js` / `index.js` | `app.js` has no side effects (DB, server) — easier to import in tests without starting the server. |
+| Invoice number pre-save hook | Auto-increments `INV-00001` style numbers atomically at the DB layer, not in application code. |
+
+---
+
+## Environment Variables
+
+| Variable          | Default                          | Description                         |
+|-------------------|----------------------------------|-------------------------------------|
+| `PORT`            | 5000                             | HTTP server port                    |
+| `MONGODB_URI`     | mongodb://localhost:27017/smeflow| MongoDB connection string           |
+| `JWT_SECRET`      | —                                | **Required.** Secret for signing JWTs |
+| `JWT_EXPIRES_IN`  | 7d                               | JWT expiry duration                 |
+| `BCRYPT_SALT_ROUNDS` | 12                            | bcrypt work factor                  |
+| `CRON_SCHEDULE`   | `0 0 * * *`                      | Cron expression for task escalation |
+| `CLIENT_ORIGIN`   | http://localhost:3000            | Allowed CORS origin                 |
+| `NODE_ENV`        | development                      | Affects logging verbosity + error detail |
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 2 of 44: backend/.env.example
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NODE_ENV=development
+PORT=5000
+
+# MongoDB Connection
+MONGODB_URI=mongodb://localhost:27017/smeflow
+
+# JWT
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=7d
+
+# Bcrypt
+BCRYPT_SALT_ROUNDS=12
+
+# Cron (automation)
+CRON_SCHEDULE=0 0 * * *
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 3 of 44: backend/package.json
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{
+  "name": "smeflow-backend",
+  "version": "1.0.0",
+  "description": "SMEFlow CRM, Workflow & Automation Platform - Backend",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "morgan": "^1.10.0",
+    "node-cron": "^3.0.3",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 4 of 44: backend/src/app.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+
+const globalErrorHandler = require('./middleware/errorHandler');
+const logger = require('./utils/logger');
+
+// Route modules
+const authRoutes = require('./routes/auth');
+const customerRoutes = require('./routes/customers');
+const taskRoutes = require('./routes/tasks');
+const invoiceRoutes = require('./routes/invoices');
+const automationRoutes = require('./routes/automation');
+
+const app = express();
+
+// ─── Core Middleware ────────────────────────────────────────────────────────
+app.use(
+  cors({
+    origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: false }));
+
+// HTTP request logging (skip in test env)
+if (process.env.NODE_ENV !== 'test') {
+  app.use(
+    morgan('combined', {
+      stream: { write: (msg) => logger.http(msg.trim()) },
+    })
+  );
+}
+
+// ─── Health Check ───────────────────────────────────────────────────────────
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ─── API Routes ─────────────────────────────────────────────────────────────
+const API_PREFIX = '/api/v1';
+
+app.use(`${API_PREFIX}/auth`, authRoutes);
+app.use(`${API_PREFIX}/customers`, customerRoutes);
+app.use(`${API_PREFIX}/tasks`, taskRoutes);
+app.use(`${API_PREFIX}/invoices`, invoiceRoutes);
+app.use(`${API_PREFIX}/automation`, automationRoutes);
+
+// ─── 404 Handler ────────────────────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({
+    status: 'fail',
+    message: `Route ${req.method} ${req.originalUrl} not found`,
+  });
+});
+
+// ─── Global Error Handler ───────────────────────────────────────────────────
+app.use(globalErrorHandler);
+
+module.exports = app;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 5 of 44: backend/src/controllers/authController.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const authService = require('../services/authService');
+const asyncHandler = require('../utils/asyncHandler');
+
+const signup = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
+  const result = await authService.signup({ name, email, password });
+
+  res.status(201).json({
+    status: 'success',
+    data: result,
+  });
+});
+
+const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const result = await authService.login({ email, password });
+
+  res.status(200).json({
+    status: 'success',
+    data: result,
+  });
+});
+
+const getMe = asyncHandler(async (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    data: { user: req.user },
+  });
+});
+
+module.exports = { signup, login, getMe };
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 6 of 44: backend/src/controllers/customerController.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const customerService = require('../services/customerService');
+const asyncHandler = require('../utils/asyncHandler');
+
+const createCustomer = asyncHandler(async (req, res) => {
+  const customer = await customerService.createCustomer(req.body, req.user._id);
+  res.status(201).json({ status: 'success', data: { customer } });
+});
+
+const getCustomers = asyncHandler(async (req, res) => {
+  const result = await customerService.getCustomers(req.user._id, req.query);
+  res.status(200).json({ status: 'success', data: result });
+});
+
+const getCustomer = asyncHandler(async (req, res) => {
+  const customer = await customerService.getCustomerById(req.params.id);
+  res.status(200).json({ status: 'success', data: { customer } });
+});
+
+const updateCustomer = asyncHandler(async (req, res) => {
+  const customer = await customerService.updateCustomer(req.params.id, req.body);
+  res.status(200).json({ status: 'success', data: { customer } });
+});
+
+const deleteCustomer = asyncHandler(async (req, res) => {
+  await customerService.deleteCustomer(req.params.id);
+  res.status(204).json({ status: 'success', data: null });
+});
+
+module.exports = { createCustomer, getCustomers, getCustomer, updateCustomer, deleteCustomer };
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 7 of 44: backend/src/controllers/invoiceController.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const invoiceService = require('../services/invoiceService');
+const asyncHandler = require('../utils/asyncHandler');
+
+const createInvoice = asyncHandler(async (req, res) => {
+  const invoice = await invoiceService.createInvoice(req.body, req.user._id);
+  res.status(201).json({ status: 'success', data: { invoice } });
+});
+
+const getInvoices = asyncHandler(async (req, res) => {
+  const result = await invoiceService.getInvoices(req.query);
+  res.status(200).json({ status: 'success', data: result });
+});
+
+const getInvoice = asyncHandler(async (req, res) => {
+  const invoice = await invoiceService.getInvoiceById(req.params.id);
+  res.status(200).json({ status: 'success', data: { invoice } });
+});
+
+const updateInvoiceStatus = asyncHandler(async (req, res) => {
+  const invoice = await invoiceService.updateInvoiceStatus(req.params.id, req.body.status);
+  res.status(200).json({ status: 'success', data: { invoice } });
+});
+
+const getDashboard = asyncHandler(async (req, res) => {
+  const stats = await invoiceService.getDashboardStats();
+  res.status(200).json({ status: 'success', data: stats });
+});
+
+module.exports = { createInvoice, getInvoices, getInvoice, updateInvoiceStatus, getDashboard };
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 8 of 44: backend/src/controllers/taskController.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const taskService = require('../services/taskService');
+const asyncHandler = require('../utils/asyncHandler');
+
+const createTask = asyncHandler(async (req, res) => {
+  const task = await taskService.createTask(req.body, req.user._id);
+  res.status(201).json({ status: 'success', data: { task } });
+});
+
+const getTasks = asyncHandler(async (req, res) => {
+  const result = await taskService.getTasks(req.query);
+  res.status(200).json({ status: 'success', data: result });
+});
+
+const getTask = asyncHandler(async (req, res) => {
+  const task = await taskService.getTaskById(req.params.id);
+  res.status(200).json({ status: 'success', data: { task } });
+});
+
+const updateTask = asyncHandler(async (req, res) => {
+  const task = await taskService.updateTask(req.params.id, req.body);
+  res.status(200).json({ status: 'success', data: { task } });
+});
+
+const deleteTask = asyncHandler(async (req, res) => {
+  await taskService.deleteTask(req.params.id);
+  res.status(204).json({ status: 'success', data: null });
+});
+
+module.exports = { createTask, getTasks, getTask, updateTask, deleteTask };
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 9 of 44: backend/src/index.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+require('dotenv').config();
+const mongoose = require('mongoose');
+const app = require('./app');
+const logger = require('./utils/logger');
+const { startAutomationJobs } = require('./services/automationService');
+const fs = require('fs');
+
+// Ensure logs directory exists
+if (!fs.existsSync('logs')) fs.mkdirSync('logs');
+
+const PORT = process.env.PORT || 5000;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/smeflow';
+
+// ─── Database Connection ────────────────────────────────────────────────────
+mongoose
+  .connect(MONGODB_URI)
+  .then(() => {
+    logger.info(`MongoDB connected: ${mongoose.connection.host}`);
+
+    // Start HTTP server only after DB is ready
+    const server = app.listen(PORT, () => {
+      logger.info(`SMEFlow API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+    });
+
+    // Register cron-based automation jobs
+    startAutomationJobs();
+
+    // ─── Graceful Shutdown ────────────────────────────────────────────────
+    const shutdown = (signal) => {
+      logger.info(`${signal} received. Shutting down gracefully...`);
+      server.close(async () => {
+        await mongoose.connection.close();
+        logger.info('MongoDB connection closed. Process exiting.');
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+  })
+  .catch((err) => {
+    logger.error(`Failed to connect to MongoDB: ${err.message}`);
+    process.exit(1);
+  });
+
+// ─── Unhandled Rejections ───────────────────────────────────────────────────
+process.on('unhandledRejection', (reason) => {
+  logger.error(`Unhandled Rejection: ${reason}`);
+  process.exit(1);
+});
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 10 of 44: backend/src/middleware/auth.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const User = require('../models/User');
+const { verifyToken } = require('../services/authService');
+const AppError = require('../utils/AppError');
+const asyncHandler = require('../utils/asyncHandler');
+
+/**
+ * Protect middleware: validates JWT from Authorization header.
+ * Attaches the authenticated user to req.user.
+ */
+const protect = asyncHandler(async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new AppError('Authentication required. Please log in.', 401);
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  let decoded;
+  try {
+    decoded = verifyToken(token);
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      throw new AppError('Your session has expired. Please log in again.', 401);
+    }
+    throw new AppError('Invalid authentication token.', 401);
+  }
+
+  const user = await User.findById(decoded.id).select('-password');
+  if (!user || !user.isActive) {
+    throw new AppError('The user associated with this token no longer exists.', 401);
+  }
+
+  req.user = user;
+  next();
+});
+
+/**
+ * Role-based access control middleware.
+ * Usage: restrictTo('admin')
+ */
+const restrictTo = (...roles) => (req, res, next) => {
+  if (!roles.includes(req.user.role)) {
+    return next(new AppError('You do not have permission to perform this action.', 403));
+  }
+  next();
+};
+
+module.exports = { protect, restrictTo };
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 11 of 44: backend/src/middleware/errorHandler.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const logger = require('../utils/logger');
+const AppError = require('../utils/AppError');
+
+/**
+ * Transforms Mongoose-specific errors into our AppError format.
+ */
+const handleMongooseError = (err) => {
+  // Duplicate key
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyValue)[0];
+    return new AppError(`A record with this ${field} already exists.`, 409);
+  }
+  // Validation errors
+  if (err.name === 'ValidationError') {
+    const messages = Object.values(err.errors).map((e) => e.message);
+    return new AppError(`Validation failed: ${messages.join('. ')}`, 422);
+  }
+  // Cast error (invalid ObjectId)
+  if (err.name === 'CastError') {
+    return new AppError(`Invalid value for field: ${err.path}`, 400);
+  }
+  return err;
+};
+
+/**
+ * Global error handling middleware.
+ * Must be registered last (after all routes).
+ */
+const globalErrorHandler = (err, req, res, next) => {
+  let error = err;
+
+  // Normalize mongoose errors
+  if (err.name === 'ValidationError' || err.name === 'CastError' || err.code === 11000) {
+    error = handleMongooseError(err);
+  }
+
+  const statusCode = error.statusCode || 500;
+  const status = error.status || 'error';
+  const isOperational = error.isOperational || false;
+
+  // Log unexpected errors with full stack
+  if (!isOperational) {
+    logger.error(`Unexpected error: ${err.message}`, { stack: err.stack, path: req.path });
+  }
+
+  // Development: expose stack trace
+  if (process.env.NODE_ENV === 'development') {
+    return res.status(statusCode).json({
+      status,
+      message: error.message,
+      stack: err.stack,
+    });
+  }
+
+  // Production: hide internal details for unexpected errors
+  if (!isOperational) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'An unexpected error occurred. Please try again later.',
+    });
+  }
+
+  return res.status(statusCode).json({
+    status,
+    message: error.message,
+  });
+};
+
+module.exports = globalErrorHandler;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 12 of 44: backend/src/middleware/validate.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const { validationResult } = require('express-validator');
+const AppError = require('../utils/AppError');
+
+/**
+ * Reads the result of express-validator chains and short-circuits
+ * the request with a 422 if any validation errors were found.
+ */
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const messages = errors.array().map((e) => `${e.path}: ${e.msg}`);
+    return next(new AppError(messages.join('. '), 422));
+  }
+  next();
+};
+
+module.exports = validate;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 13 of 44: backend/src/models/Customer.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const mongoose = require('mongoose');
+
+const customerSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, 'Customer name is required'],
+      trim: true,
+      maxlength: [150, 'Name cannot exceed 150 characters'],
+    },
+    email: {
+      type: String,
+      required: [true, 'Email is required'],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
+    },
+    phone: {
+      type: String,
+      trim: true,
+      match: [/^[+\d\s\-().]{7,20}$/, 'Please provide a valid phone number'],
+    },
+    company: {
+      type: String,
+      trim: true,
+      maxlength: [150, 'Company name cannot exceed 150 characters'],
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
+
+// Virtuals for related documents
+customerSchema.virtual('tasks', {
+  ref: 'Task',
+  localField: '_id',
+  foreignField: 'customer',
+});
+
+customerSchema.virtual('invoices', {
+  ref: 'Invoice',
+  localField: '_id',
+  foreignField: 'customer',
+});
+
+// Indexes for performant queries
+customerSchema.index({ email: 1 });
+customerSchema.index({ company: 1 });
+customerSchema.index({ createdBy: 1 });
+
+module.exports = mongoose.model('Customer', customerSchema);
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 14 of 44: backend/src/models/Invoice.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const mongoose = require('mongoose');
+
+const INVOICE_STATUSES = ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED'];
+
+const invoiceSchema = new mongoose.Schema(
+  {
+    invoiceNumber: {
+      type: String,
+      unique: true,
+    },
+    customer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Customer',
+      required: [true, 'Invoice must be linked to a customer'],
+    },
+    amount: {
+      type: Number,
+      required: [true, 'Invoice amount is required'],
+      min: [0, 'Amount cannot be negative'],
+    },
+    status: {
+      type: String,
+      enum: INVOICE_STATUSES,
+      default: 'DRAFT',
+    },
+    dueDate: {
+      type: Date,
+    },
+    paidAt: {
+      type: Date,
+      default: null,
+    },
+    notes: {
+      type: String,
+      maxlength: [1000, 'Notes cannot exceed 1000 characters'],
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Auto-generate invoice number before saving
+invoiceSchema.pre('save', async function (next) {
+  if (!this.isNew) return next();
+  const count = await this.constructor.countDocuments();
+  this.invoiceNumber = `INV-${String(count + 1).padStart(5, '0')}`;
+  next();
+});
+
+invoiceSchema.index({ customer: 1 });
+invoiceSchema.index({ status: 1 });
+invoiceSchema.index({ createdBy: 1 });
+
+module.exports = mongoose.model('Invoice', invoiceSchema);
+module.exports.INVOICE_STATUSES = INVOICE_STATUSES;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 15 of 44: backend/src/models/Task.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const mongoose = require('mongoose');
+
+const TASK_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE'];
+const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'HIGH_PRIORITY', 'CRITICAL'];
+
+const taskSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, 'Task title is required'],
+      trim: true,
+      maxlength: [200, 'Title cannot exceed 200 characters'],
+    },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: [2000, 'Description cannot exceed 2000 characters'],
+    },
+    status: {
+      type: String,
+      enum: TASK_STATUSES,
+      default: 'PENDING',
+    },
+    priority: {
+      type: String,
+      enum: TASK_PRIORITIES,
+      default: 'MEDIUM',
+    },
+    dueDate: {
+      type: Date,
+      required: [true, 'Due date is required'],
+    },
+    customer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Customer',
+      required: [true, 'Task must be linked to a customer'],
+    },
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Task must be assigned to a user'],
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    // Automation tracking
+    autoEscalatedAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Indexes
+taskSchema.index({ status: 1 });
+taskSchema.index({ dueDate: 1, status: 1 }); // critical for cron job query
+taskSchema.index({ assignedTo: 1 });
+taskSchema.index({ customer: 1 });
+
+// Virtual: is this task overdue?
+taskSchema.virtual('isOverdue').get(function () {
+  return this.status !== 'COMPLETED' && this.dueDate < new Date();
+});
+
+module.exports = mongoose.model('Task', taskSchema);
+module.exports.TASK_STATUSES = TASK_STATUSES;
+module.exports.TASK_PRIORITIES = TASK_PRIORITIES;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 16 of 44: backend/src/models/User.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, 'Name is required'],
+      trim: true,
+      maxlength: [100, 'Name cannot exceed 100 characters'],
+    },
+    email: {
+      type: String,
+      required: [true, 'Email is required'],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
+    },
+    password: {
+      type: String,
+      required: [true, 'Password is required'],
+      minlength: [8, 'Password must be at least 8 characters'],
+      select: false, // Never return password in queries by default
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'user'],
+      default: 'user',
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
+
+// Virtual: tasks assigned to this user
+userSchema.virtual('tasks', {
+  ref: 'Task',
+  localField: '_id',
+  foreignField: 'assignedTo',
+});
+
+// Pre-save hook: hash password before persisting
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  const rounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12;
+  this.password = await bcrypt.hash(this.password, rounds);
+  next();
+});
+
+// Instance method: compare raw password with stored hash
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+module.exports = mongoose.model('User', userSchema);
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 17 of 44: backend/src/routes/auth.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const express = require('express');
+const { body } = require('express-validator');
+const authController = require('../controllers/authController');
+const { protect } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+
+const router = express.Router();
+
+router.post(
+  '/signup',
+  [
+    body('name').trim().notEmpty().withMessage('Name is required'),
+    body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+    body('password')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters'),
+  ],
+  validate,
+  authController.signup
+);
+
+router.post(
+  '/login',
+  [
+    body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+    body('password').notEmpty().withMessage('Password is required'),
+  ],
+  validate,
+  authController.login
+);
+
+router.get('/me', protect, authController.getMe);
+
+module.exports = router;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 18 of 44: backend/src/routes/automation.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const express = require('express');
+const { protect, restrictTo } = require('../middleware/auth');
+const { escalateOverdueTasks } = require('../services/automationService');
+const asyncHandler = require('../utils/asyncHandler');
+
+const router = express.Router();
+
+// Manual trigger (admin only) — useful for testing without waiting for cron
+router.post(
+  '/run-escalation',
+  protect,
+  restrictTo('admin'),
+  asyncHandler(async (req, res) => {
+    const result = await escalateOverdueTasks();
+    res.status(200).json({ status: 'success', data: result });
+  })
+);
+
+module.exports = router;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 19 of 44: backend/src/routes/customers.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const express = require('express');
+const { body } = require('express-validator');
+const customerController = require('../controllers/customerController');
+const { protect } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+
+const router = express.Router();
+
+// All customer routes require authentication
+router.use(protect);
+
+router
+  .route('/')
+  .get(customerController.getCustomers)
+  .post(
+    [
+      body('name').trim().notEmpty().withMessage('Customer name is required'),
+      body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+      body('phone').optional().isMobilePhone().withMessage('Valid phone number required'),
+      body('company').optional().trim(),
+    ],
+    validate,
+    customerController.createCustomer
+  );
+
+router
+  .route('/:id')
+  .get(customerController.getCustomer)
+  .patch(
+    [
+      body('email').optional().isEmail().withMessage('Valid email is required').normalizeEmail(),
+      body('phone').optional().isMobilePhone().withMessage('Valid phone number required'),
+    ],
+    validate,
+    customerController.updateCustomer
+  )
+  .delete(customerController.deleteCustomer);
+
+module.exports = router;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 20 of 44: backend/src/routes/invoices.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const express = require('express');
+const { body } = require('express-validator');
+const invoiceController = require('../controllers/invoiceController');
+const { protect } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+
+const router = express.Router();
+
+router.use(protect);
+
+// Dashboard stats - must be before /:id
+router.get('/dashboard/stats', invoiceController.getDashboard);
+
+router
+  .route('/')
+  .get(invoiceController.getInvoices)
+  .post(
+    [
+      body('customer').isMongoId().withMessage('Valid customer ID is required'),
+      body('amount').isFloat({ min: 0 }).withMessage('Amount must be a non-negative number'),
+      body('status')
+        .optional()
+        .isIn(['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED'])
+        .withMessage('Invalid invoice status'),
+      body('dueDate').optional().isISO8601().withMessage('Valid due date required'),
+    ],
+    validate,
+    invoiceController.createInvoice
+  );
+
+router
+  .route('/:id')
+  .get(invoiceController.getInvoice)
+  .patch(
+    [
+      body('status')
+        .isIn(['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED'])
+        .withMessage('Invalid invoice status'),
+    ],
+    validate,
+    invoiceController.updateInvoiceStatus
+  );
+
+module.exports = router;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 21 of 44: backend/src/routes/tasks.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const express = require('express');
+const { body } = require('express-validator');
+const taskController = require('../controllers/taskController');
+const { protect } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+
+const router = express.Router();
+
+router.use(protect);
+
+router
+  .route('/')
+  .get(taskController.getTasks)
+  .post(
+    [
+      body('title').trim().notEmpty().withMessage('Task title is required'),
+      body('customer').isMongoId().withMessage('Valid customer ID is required'),
+      body('assignedTo').isMongoId().withMessage('Valid user ID is required'),
+      body('dueDate').isISO8601().withMessage('Valid due date is required'),
+      body('priority')
+        .optional()
+        .isIn(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'])
+        .withMessage('Invalid priority value'),
+      body('status')
+        .optional()
+        .isIn(['PENDING', 'IN_PROGRESS', 'COMPLETED'])
+        .withMessage('Invalid status value'),
+    ],
+    validate,
+    taskController.createTask
+  );
+
+router
+  .route('/:id')
+  .get(taskController.getTask)
+  .patch(
+    [
+      body('status')
+        .optional()
+        .isIn(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE'])
+        .withMessage('Invalid status value'),
+      body('priority')
+        .optional()
+        .isIn(['LOW', 'MEDIUM', 'HIGH', 'HIGH_PRIORITY', 'CRITICAL'])
+        .withMessage('Invalid priority value'),
+      body('dueDate').optional().isISO8601().withMessage('Valid due date is required'),
+    ],
+    validate,
+    taskController.updateTask
+  )
+  .delete(taskController.deleteTask);
+
+module.exports = router;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 22 of 44: backend/src/services/authService.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
+
+/**
+ * Generates a signed JWT token for the given user ID.
+ */
+const signToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  });
+};
+
+/**
+ * Registers a new user and returns a JWT.
+ */
+const signup = async ({ name, email, password }) => {
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    throw new AppError('A user with this email already exists.', 409);
+  }
+
+  const user = await User.create({ name, email, password });
+  const token = signToken(user._id);
+
+  logger.info(`New user registered: ${user.email} (${user._id})`);
+
+  return {
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
+  };
+};
+
+/**
+ * Authenticates a user by email/password and returns a JWT.
+ */
+const login = async ({ email, password }) => {
+  // Explicitly select password since it's excluded by default
+  const user = await User.findOne({ email, isActive: true }).select('+password');
+  if (!user) {
+    throw new AppError('Invalid email or password.', 401);
+  }
+
+  const isPasswordValid = await user.comparePassword(password);
+  if (!isPasswordValid) {
+    throw new AppError('Invalid email or password.', 401);
+  }
+
+  const token = signToken(user._id);
+
+  logger.info(`User logged in: ${user.email} (${user._id})`);
+
+  return {
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
+  };
+};
+
+/**
+ * Verifies a JWT and returns the decoded payload.
+ */
+const verifyToken = (token) => {
+  return jwt.verify(token, process.env.JWT_SECRET);
+};
+
+module.exports = { signup, login, verifyToken };
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 23 of 44: backend/src/services/automationService.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const cron = require('node-cron');
+const Task = require('../models/Task');
+const logger = require('../utils/logger');
+
+/**
+ * Core automation logic: find all non-completed tasks past their due date
+ * and escalate their status and priority.
+ *
+ * This is extracted from the cron callback so it can be tested/run independently.
+ */
+const escalateOverdueTasks = async () => {
+  const now = new Date();
+
+  logger.info(`[Automation] Running overdue task escalation at ${now.toISOString()}`);
+
+  try {
+    const result = await Task.updateMany(
+      {
+        dueDate: { $lt: now },
+        status: { $nin: ['COMPLETED', 'OVERDUE'] },
+      },
+      {
+        $set: {
+          status: 'OVERDUE',
+          priority: 'HIGH_PRIORITY',
+          autoEscalatedAt: now,
+        },
+      }
+    );
+
+    logger.info(
+      `[Automation] Escalated ${result.modifiedCount} overdue task(s). ` +
+        `Matched: ${result.matchedCount}`
+    );
+
+    return {
+      matched: result.matchedCount,
+      escalated: result.modifiedCount,
+      ranAt: now,
+    };
+  } catch (err) {
+    logger.error(`[Automation] Escalation job failed: ${err.message}`, { stack: err.stack });
+    throw err;
+  }
+};
+
+/**
+ * Registers the cron schedule.
+ * Default: midnight every day ("0 0 * * *")
+ * Configurable via CRON_SCHEDULE env variable.
+ */
+const startAutomationJobs = () => {
+  const schedule = process.env.CRON_SCHEDULE || '0 0 * * *';
+
+  if (!cron.validate(schedule)) {
+    logger.error(`[Automation] Invalid CRON_SCHEDULE: "${schedule}". Job not started.`);
+    return;
+  }
+
+  cron.schedule(schedule, async () => {
+    await escalateOverdueTasks();
+  });
+
+  logger.info(`[Automation] Overdue task escalation job scheduled: "${schedule}"`);
+};
+
+module.exports = { startAutomationJobs, escalateOverdueTasks };
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 24 of 44: backend/src/services/customerService.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const Customer = require('../models/Customer');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
+
+const createCustomer = async (data, userId) => {
+  const existing = await Customer.findOne({ email: data.email });
+  if (existing) {
+    throw new AppError('A customer with this email already exists.', 409);
+  }
+
+  const customer = await Customer.create({ ...data, createdBy: userId });
+  logger.info(`Customer created: ${customer.email} by user ${userId}`);
+  return customer;
+};
+
+const getCustomers = async (userId, query = {}) => {
+  const filter = { isActive: true };
+
+  if (query.search) {
+    filter.$or = [
+      { name: { $regex: query.search, $options: 'i' } },
+      { email: { $regex: query.search, $options: 'i' } },
+      { company: { $regex: query.search, $options: 'i' } },
+    ];
+  }
+
+  const page = parseInt(query.page, 10) || 1;
+  const limit = parseInt(query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
+  const [customers, total] = await Promise.all([
+    Customer.find(filter)
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Customer.countDocuments(filter),
+  ]);
+
+  return { customers, total, page, totalPages: Math.ceil(total / limit) };
+};
+
+const getCustomerById = async (customerId) => {
+  const customer = await Customer.findById(customerId)
+    .populate('createdBy', 'name email')
+    .populate({ path: 'tasks', select: 'title status priority dueDate' })
+    .populate({ path: 'invoices', select: 'invoiceNumber amount status createdAt' });
+
+  if (!customer || !customer.isActive) {
+    throw new AppError('Customer not found.', 404);
+  }
+
+  return customer;
+};
+
+const updateCustomer = async (customerId, data) => {
+  // Prevent email conflicts
+  if (data.email) {
+    const conflict = await Customer.findOne({ email: data.email, _id: { $ne: customerId } });
+    if (conflict) {
+      throw new AppError('Another customer with this email already exists.', 409);
+    }
+  }
+
+  const customer = await Customer.findByIdAndUpdate(
+    customerId,
+    { $set: data },
+    { new: true, runValidators: true }
+  );
+
+  if (!customer) throw new AppError('Customer not found.', 404);
+
+  logger.info(`Customer updated: ${customerId}`);
+  return customer;
+};
+
+const deleteCustomer = async (customerId) => {
+  // Soft delete
+  const customer = await Customer.findByIdAndUpdate(
+    customerId,
+    { isActive: false },
+    { new: true }
+  );
+
+  if (!customer) throw new AppError('Customer not found.', 404);
+  logger.info(`Customer soft-deleted: ${customerId}`);
+};
+
+module.exports = { createCustomer, getCustomers, getCustomerById, updateCustomer, deleteCustomer };
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 25 of 44: backend/src/services/invoiceService.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const Invoice = require('../models/Invoice');
+const Customer = require('../models/Customer');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
+
+const createInvoice = async (data, userId) => {
+  const customer = await Customer.findById(data.customer);
+  if (!customer || !customer.isActive) {
+    throw new AppError('Customer not found.', 404);
+  }
+
+  const invoice = await Invoice.create({ ...data, createdBy: userId });
+
+  logger.info(`Invoice ${invoice.invoiceNumber} created for customer ${data.customer}`);
+
+  return Invoice.findById(invoice._id).populate('customer', 'name email company');
+};
+
+const getInvoices = async (query = {}) => {
+  const filter = {};
+
+  if (query.status) filter.status = query.status;
+  if (query.customer) filter.customer = query.customer;
+
+  const page = parseInt(query.page, 10) || 1;
+  const limit = parseInt(query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
+  const [invoices, total] = await Promise.all([
+    Invoice.find(filter)
+      .populate('customer', 'name email company')
+      .populate('createdBy', 'name')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Invoice.countDocuments(filter),
+  ]);
+
+  return { invoices, total, page, totalPages: Math.ceil(total / limit) };
+};
+
+const getInvoiceById = async (invoiceId) => {
+  const invoice = await Invoice.findById(invoiceId)
+    .populate('customer', 'name email company phone')
+    .populate('createdBy', 'name email');
+
+  if (!invoice) throw new AppError('Invoice not found.', 404);
+  return invoice;
+};
+
+const updateInvoiceStatus = async (invoiceId, status) => {
+  const update = { status };
+
+  if (status === 'PAID') {
+    update.paidAt = new Date();
+  }
+
+  const invoice = await Invoice.findByIdAndUpdate(invoiceId, { $set: update }, { new: true, runValidators: true })
+    .populate('customer', 'name email company');
+
+  if (!invoice) throw new AppError('Invoice not found.', 404);
+
+  logger.info(`Invoice ${invoice.invoiceNumber} status updated to ${status}`);
+  return invoice;
+};
+
+const getDashboardStats = async () => {
+  const [
+    totalCustomers,
+    totalTasks,
+    totalInvoices,
+    tasksByStatus,
+    invoicesByStatus,
+    recentInvoices,
+  ] = await Promise.all([
+    require('../models/Customer').countDocuments({ isActive: true }),
+    require('../models/Task').countDocuments(),
+    Invoice.countDocuments(),
+    require('../models/Task').aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
+    Invoice.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 }, total: { $sum: '$amount' } } },
+    ]),
+    Invoice.find({ status: { $ne: 'CANCELLED' } })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('customer', 'name'),
+  ]);
+
+  return {
+    counts: { totalCustomers, totalTasks, totalInvoices },
+    tasksByStatus: tasksByStatus.reduce((acc, { _id, count }) => ({ ...acc, [_id]: count }), {}),
+    invoicesByStatus: invoicesByStatus.reduce(
+      (acc, { _id, count, total }) => ({ ...acc, [_id]: { count, total } }),
+      {}
+    ),
+    recentInvoices,
+  };
+};
+
+module.exports = { createInvoice, getInvoices, getInvoiceById, updateInvoiceStatus, getDashboardStats };
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 26 of 44: backend/src/services/taskService.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const Task = require('../models/Task');
+const Customer = require('../models/Customer');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
+
+const createTask = async (data, userId) => {
+  const customer = await Customer.findById(data.customer);
+  if (!customer || !customer.isActive) {
+    throw new AppError('Customer not found.', 404);
+  }
+
+  const task = await Task.create({ ...data, createdBy: userId });
+
+  logger.info(`Task created: "${task.title}" for customer ${data.customer} by user ${userId}`);
+  return task.populate([
+    { path: 'customer', select: 'name email company' },
+    { path: 'assignedTo', select: 'name email' },
+  ]);
+};
+
+const getTasks = async (query = {}) => {
+  const filter = {};
+
+  if (query.status) filter.status = query.status;
+  if (query.priority) filter.priority = query.priority;
+  if (query.assignedTo) filter.assignedTo = query.assignedTo;
+  if (query.customer) filter.customer = query.customer;
+
+  const page = parseInt(query.page, 10) || 1;
+  const limit = parseInt(query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
+  const [tasks, total] = await Promise.all([
+    Task.find(filter)
+      .populate('customer', 'name email company')
+      .populate('assignedTo', 'name email')
+      .populate('createdBy', 'name')
+      .sort({ dueDate: 1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Task.countDocuments(filter),
+  ]);
+
+  return { tasks, total, page, totalPages: Math.ceil(total / limit) };
+};
+
+const getTaskById = async (taskId) => {
+  const task = await Task.findById(taskId)
+    .populate('customer', 'name email company')
+    .populate('assignedTo', 'name email')
+    .populate('createdBy', 'name email');
+
+  if (!task) throw new AppError('Task not found.', 404);
+  return task;
+};
+
+const updateTask = async (taskId, data) => {
+  const task = await Task.findByIdAndUpdate(taskId, { $set: data }, { new: true, runValidators: true })
+    .populate('customer', 'name email company')
+    .populate('assignedTo', 'name email');
+
+  if (!task) throw new AppError('Task not found.', 404);
+
+  logger.info(`Task updated: ${taskId} → status: ${task.status}, priority: ${task.priority}`);
+  return task;
+};
+
+const deleteTask = async (taskId) => {
+  const task = await Task.findByIdAndDelete(taskId);
+  if (!task) throw new AppError('Task not found.', 404);
+  logger.info(`Task deleted: ${taskId}`);
+};
+
+module.exports = { createTask, getTasks, getTaskById, updateTask, deleteTask };
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 27 of 44: backend/src/utils/AppError.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class AppError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode;
+    this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+    this.isOperational = true;
+
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+module.exports = AppError;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 28 of 44: backend/src/utils/asyncHandler.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * Wraps async route handlers to eliminate repetitive try/catch blocks.
+ * Forwards any thrown error to Express's next() error middleware.
+ */
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+module.exports = asyncHandler;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 29 of 44: backend/src/utils/logger.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const winston = require('winston');
+
+const { combine, timestamp, printf, colorize, errors } = winston.format;
+
+const logFormat = printf(({ level, message, timestamp, stack }) => {
+  return `${timestamp} [${level}]: ${stack || message}`;
+});
+
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: combine(
+    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    errors({ stack: true }),
+    logFormat
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: combine(colorize(), timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), errors({ stack: true }), logFormat),
+    }),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+  exceptionHandlers: [new winston.transports.File({ filename: 'logs/exceptions.log' })],
+});
+
+module.exports = logger;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 30 of 44: frontend/package.json
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{
+  "name": "smeflow-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.0",
+    "react-scripts": "5.0.1",
+    "axios": "^1.6.2"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build"
+  },
+  "proxy": "http://localhost:5000",
+  "browserslist": {
+    "production": [">0.2%", "not dead", "not op_mini all"],
+    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+  }
+}
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 31 of 44: frontend/public/index.html
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d0f12" />
+    <title>SMEFlow — CRM & Automation Platform</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 32 of 44: frontend/src/App.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import AuthPage from './pages/AuthPage';
+import Dashboard from './pages/Dashboard';
+import CustomersPage from './pages/CustomersPage';
+import TasksPage from './pages/TasksPage';
+import InvoicesPage from './pages/InvoicesPage';
+import './index.css';
+
+const App = () => (
+  <AuthProvider>
+    <BrowserRouter>
+      <Routes>
+        {/* Public */}
+        <Route path="/login" element={<AuthPage />} />
+
+        {/* Protected */}
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/customers" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
+        <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
+        <Route path="/invoices" element={<ProtectedRoute><InvoicesPage /></ProtectedRoute>} />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </BrowserRouter>
+  </AuthProvider>
+);
+
+export default App;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 33 of 44: frontend/src/components/Layout.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+const NAV_ITEMS = [
+  { to: '/dashboard', label: 'Dashboard', icon: '⊞' },
+  { to: '/customers', label: 'Customers', icon: '👥' },
+  { to: '/tasks', label: 'Tasks', icon: '✓' },
+  { to: '/invoices', label: 'Invoices', icon: '🧾' },
+];
+
+const Layout = ({ children }) => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const initials = user?.name
+    ?.split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <h1><span>SME</span>Flow</h1>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>CRM & Automation</div>
+        </div>
+
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map(({ to, label, icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+            >
+              <span className="nav-icon">{icon}</span>
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="user-chip">
+            <div className="user-avatar">{initials}</div>
+            <div className="user-info">
+              <div className="user-name">{user?.name}</div>
+              <div className="user-role">{user?.role}</div>
+            </div>
+            <button className="logout-btn" onClick={handleLogout} title="Log out">↩</button>
+          </div>
+        </div>
+      </aside>
+
+      <main className="main-content">{children}</main>
+    </div>
+  );
+};
+
+export default Layout;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 34 of 44: frontend/src/components/ProtectedRoute.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+export default ProtectedRoute;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 35 of 44: frontend/src/components/UI.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React from 'react';
+
+export const Spinner = () => <span className="spinner" />;
+
+export const Alert = ({ type = 'error', children }) => (
+  <div className={`alert alert-${type}`}>{children}</div>
+);
+
+export const Badge = ({ status, priority }) => {
+  const val = (status || priority || '').toUpperCase();
+  const map = {
+    PENDING: 'badge-gray', IN_PROGRESS: 'badge-blue', COMPLETED: 'badge-green',
+    OVERDUE: 'badge-red', HIGH_PRIORITY: 'badge-red',
+    LOW: 'badge-gray', MEDIUM: 'badge-blue', HIGH: 'badge-yellow', CRITICAL: 'badge-red',
+    DRAFT: 'badge-gray', SENT: 'badge-blue', PAID: 'badge-green', CANCELLED: 'badge-red',
+  };
+  const cls = map[val] || 'badge-gray';
+  return <span className={`badge ${cls}`}>{val.replace('_', ' ')}</span>;
+};
+
+export const EmptyState = ({ icon = '📭', message = 'No records found' }) => (
+  <div className="empty-state">
+    <div className="empty-state-icon">{icon}</div>
+    <p>{message}</p>
+  </div>
+);
+
+export const Modal = ({ title, onClose, children, footer }) => (
+  <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal">
+      <div className="modal-header">
+        <span className="modal-title">{title}</span>
+        <button className="modal-close" onClick={onClose}>×</button>
+      </div>
+      {children}
+      {footer && <div className="modal-footer">{footer}</div>}
+    </div>
+  </div>
+);
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 36 of 44: frontend/src/context/AuthContext.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { authAPI } from '../services/api';
+
+const AuthContext = createContext(null);
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('smeflow_user');
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  const login = useCallback(async (email, password) => {
+    const { data } = await authAPI.login({ email, password });
+    const { token, user: userData } = data.data;
+    localStorage.setItem('smeflow_token', token);
+    localStorage.setItem('smeflow_user', JSON.stringify(userData));
+    setUser(userData);
+    return userData;
+  }, []);
+
+  const signup = useCallback(async (name, email, password) => {
+    const { data } = await authAPI.signup({ name, email, password });
+    const { token, user: userData } = data.data;
+    localStorage.setItem('smeflow_token', token);
+    localStorage.setItem('smeflow_user', JSON.stringify(userData));
+    setUser(userData);
+    return userData;
+  }, []);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('smeflow_token');
+    localStorage.removeItem('smeflow_user');
+    setUser(null);
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, login, signup, logout, isAuthenticated: !!user }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+};
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 37 of 44: frontend/src/index.css
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #0d0f12;
+  --surface: #161920;
+  --surface-2: #1e2229;
+  --border: #2a2f3a;
+  --border-light: #333b47;
+  --accent: #4f8ef7;
+  --accent-dim: rgba(79, 142, 247, 0.12);
+  --accent-hover: #6ba3ff;
+  --success: #34d399;
+  --success-dim: rgba(52, 211, 153, 0.12);
+  --warning: #fbbf24;
+  --warning-dim: rgba(251, 191, 36, 0.12);
+  --danger: #f87171;
+  --danger-dim: rgba(248, 113, 113, 0.12);
+  --text-primary: #e8eaf0;
+  --text-secondary: #8892a4;
+  --text-muted: #4d5566;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.2);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+code, pre, .mono { font-family: 'DM Mono', monospace; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+
+/* Layout */
+.app-shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+
+.sidebar-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo h1 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+.sidebar-logo span { color: var(--accent); }
+
+.sidebar-nav { padding: 12px 10px; flex: 1; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+  margin-bottom: 2px;
+}
+.nav-item:hover { background: var(--surface-2); color: var(--text-primary); }
+.nav-item.active { background: var(--accent-dim); color: var(--accent); }
+.nav-icon { width: 16px; height: 16px; flex-shrink: 0; }
+
+.sidebar-footer {
+  padding: 14px 10px;
+  border-top: 1px solid var(--border);
+}
+.user-chip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: var(--radius);
+}
+.user-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; flex-shrink: 0;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 12.5px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 11px; color: var(--text-muted); }
+.logout-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); padding: 4px; border-radius: 4px;
+  transition: color 0.15s;
+}
+.logout-btn:hover { color: var(--danger); }
+
+.main-content {
+  margin-left: 220px;
+  flex: 1;
+  padding: 32px 36px;
+  max-width: 100%;
+}
+
+/* Page Header */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px;
+}
+.page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; }
+.page-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  box-shadow: var(--shadow);
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+}
+.stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+.stat-value { font-size: 30px; font-weight: 600; letter-spacing: -1px; color: var(--text-primary); }
+.stat-icon { font-size: 20px; margin-bottom: 12px; }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left; font-size: 11px; font-weight: 500;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px;
+  padding: 0 16px 12px; border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 13px 16px; border-bottom: 1px solid var(--border);
+  font-size: 13.5px; color: var(--text-secondary);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+td.primary { color: var(--text-primary); font-weight: 500; }
+
+/* Badges */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 9px; border-radius: 20px;
+  font-size: 11px; font-weight: 500; white-space: nowrap;
+}
+.badge-blue { background: var(--accent-dim); color: var(--accent); }
+.badge-green { background: var(--success-dim); color: var(--success); }
+.badge-yellow { background: var(--warning-dim); color: var(--warning); }
+.badge-red { background: var(--danger-dim); color: var(--danger); }
+.badge-gray { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+
+/* Forms */
+.form-group { margin-bottom: 18px; }
+.form-label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+.form-input, .form-select {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: border-color 0.15s;
+  outline: none;
+}
+.form-input::placeholder { color: var(--text-muted); }
+.form-input:focus, .form-select:focus { border-color: var(--accent); }
+.form-select option { background: var(--surface-2); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 16px; border-radius: var(--radius);
+  font-size: 13.5px; font-weight: 500; cursor: pointer;
+  border: none; transition: all 0.15s; font-family: inherit;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--surface-2); color: var(--text-primary); }
+.btn-danger { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(248,113,113,0.2); }
+.btn-danger:hover { background: rgba(248,113,113,0.2); }
+.btn-sm { padding: 6px 11px; font-size: 12.5px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 20px;
+  backdrop-filter: blur(4px);
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 30px;
+  width: 100%; max-width: 480px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.modal-title { font-size: 16px; font-weight: 600; }
+.modal-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 20px; line-height: 1; }
+.modal-close:hover { color: var(--text-primary); }
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+/* Auth Page */
+.auth-page {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  padding: 20px;
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px 40px;
+  width: 100%; max-width: 400px;
+}
+.auth-logo { font-size: 20px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.5px; }
+.auth-logo span { color: var(--accent); }
+.auth-tagline { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+.auth-switch { font-size: 13px; color: var(--text-muted); margin-top: 18px; text-align: center; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 48px 0; color: var(--text-muted); }
+.empty-state-icon { font-size: 32px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+
+/* Alert */
+.alert { padding: 11px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 16px; }
+.alert-error { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(248,113,113,0.2); }
+.alert-success { background: var(--success-dim); color: var(--success); border: 1px solid rgba(52,211,153,0.2); }
+
+/* Spinner */
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 38 of 44: frontend/src/index.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<React.StrictMode><App /></React.StrictMode>);
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 39 of 44: frontend/src/pages/AuthPage.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { Alert, Spinner } from '../components/UI';
+
+const AuthPage = () => {
+  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login, signup } = useAuth();
+  const navigate = useNavigate();
+
+  const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      if (mode === 'login') {
+        await login(form.email, form.password);
+      } else {
+        await signup(form.name, form.email, form.password);
+      }
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-logo"><span>SME</span>Flow</div>
+        <div className="auth-tagline">
+          {mode === 'login' ? 'Sign in to your workspace' : 'Create your account'}
+        </div>
+
+        {error && <Alert type="error">{error}</Alert>}
+
+        <form onSubmit={handleSubmit}>
+          {mode === 'signup' && (
+            <div className="form-group">
+              <label className="form-label">Full Name</label>
+              <input
+                className="form-input" name="name" value={form.name}
+                onChange={handleChange} placeholder="Jane Smith" required
+              />
+            </div>
+          )}
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input
+              className="form-input" type="email" name="email" value={form.email}
+              onChange={handleChange} placeholder="you@company.com" required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input
+              className="form-input" type="password" name="password" value={form.password}
+              onChange={handleChange} placeholder={mode === 'signup' ? 'At least 8 characters' : '••••••••'} required
+            />
+          </div>
+
+          <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
+            {loading ? <Spinner /> : (mode === 'login' ? 'Sign In' : 'Create Account')}
+          </button>
+        </form>
+
+        <p className="auth-switch">
+          {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+          <button
+            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}
+            style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px' }}
+          >
+            {mode === 'login' ? 'Sign up' : 'Sign in'}
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default AuthPage;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 40 of 44: frontend/src/pages/CustomersPage.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React, { useEffect, useState, useCallback } from 'react';
+import { customersAPI } from '../services/api';
+import Layout from '../components/Layout';
+import { Spinner, Alert, EmptyState, Modal } from '../components/UI';
+
+const EMPTY_FORM = { name: '', email: '', phone: '', company: '' };
+
+const CustomersPage = () => {
+  const [data, setData] = useState({ customers: [], total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [search, setSearch] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: res } = await customersAPI.list({ search });
+      setData(res.data);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to load customers');
+    } finally {
+      setLoading(false);
+    }
+  }, [search]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async () => {
+    setFormError('');
+    setSaving(true);
+    try {
+      await customersAPI.create(form);
+      setShowModal(false);
+      setForm(EMPTY_FORM);
+      load();
+    } catch (e) {
+      setFormError(e.response?.data?.message || 'Failed to create customer');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Layout>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Customers</div>
+          <div className="page-subtitle">{data.total} total records</div>
+        </div>
+        <button className="btn btn-primary" onClick={() => { setShowModal(true); setFormError(''); setForm(EMPTY_FORM); }}>
+          + Add Customer
+        </button>
+      </div>
+
+      <div className="card">
+        <div style={{ marginBottom: 16 }}>
+          <input
+            className="form-input" placeholder="Search by name, email or company…"
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            style={{ maxWidth: 320 }}
+          />
+        </div>
+
+        {error && <Alert>{error}</Alert>}
+
+        {loading ? (
+          <div style={{ display: 'flex', gap: 10, padding: '20px 0', color: 'var(--text-muted)' }}><Spinner /> Loading…</div>
+        ) : data.customers.length === 0 ? (
+          <EmptyState icon="👥" message="No customers yet. Add your first one!" />
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Company</th>
+                  <th>Since</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.customers.map((c) => (
+                  <tr key={c._id}>
+                    <td className="primary">{c.name}</td>
+                    <td>{c.email}</td>
+                    <td>{c.phone || '—'}</td>
+                    <td>{c.company || '—'}</td>
+                    <td>{new Date(c.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <Modal
+          title="New Customer"
+          onClose={() => setShowModal(false)}
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+                {saving ? <Spinner /> : 'Create Customer'}
+              </button>
+            </>
+          }
+        >
+          {formError && <Alert>{formError}</Alert>}
+          <div className="form-group">
+            <label className="form-label">Name *</label>
+            <input className="form-input" name="name" value={form.name} onChange={handleChange} placeholder="Customer name" required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email *</label>
+            <input className="form-input" type="email" name="email" value={form.email} onChange={handleChange} placeholder="customer@company.com" required />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Phone</label>
+              <input className="form-input" name="phone" value={form.phone} onChange={handleChange} placeholder="+91 …" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Company</label>
+              <input className="form-input" name="company" value={form.company} onChange={handleChange} placeholder="Acme Corp" />
+            </div>
+          </div>
+        </Modal>
+      )}
+    </Layout>
+  );
+};
+
+export default CustomersPage;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 41 of 44: frontend/src/pages/Dashboard.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React, { useEffect, useState } from 'react';
+import { invoicesAPI } from '../services/api';
+import Layout from '../components/Layout';
+import { Spinner, Badge } from '../components/UI';
+
+const fmt = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+const Dashboard = () => {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    invoicesAPI.dashboard()
+      .then(({ data }) => setStats(data.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <Layout><div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-muted)' }}><Spinner /> Loading dashboard…</div></Layout>;
+
+  const tasks = stats?.tasksByStatus || {};
+  const invoiceStats = stats?.invoicesByStatus || {};
+  const totalRevenue = Object.values(invoiceStats).reduce((s, v) => s + (v.total || 0), 0);
+  const paidRevenue = invoiceStats.PAID?.total || 0;
+
+  return (
+    <Layout>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Dashboard</div>
+          <div className="page-subtitle">Overview of your CRM & workflow activity</div>
+        </div>
+      </div>
+
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon">👥</div>
+          <div className="stat-label">Customers</div>
+          <div className="stat-value">{stats?.counts?.totalCustomers ?? 0}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">✓</div>
+          <div className="stat-label">Total Tasks</div>
+          <div className="stat-value">{stats?.counts?.totalTasks ?? 0}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">🧾</div>
+          <div className="stat-label">Invoices</div>
+          <div className="stat-value">{stats?.counts?.totalInvoices ?? 0}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">💰</div>
+          <div className="stat-label">Paid Revenue</div>
+          <div className="stat-value" style={{ fontSize: 20 }}>{fmt(paidRevenue)}</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        {/* Task Breakdown */}
+        <div className="card">
+          <div style={{ fontWeight: 600, marginBottom: 18, fontSize: 14 }}>Tasks by Status</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[['PENDING', '🕐'], ['IN_PROGRESS', '⚡'], ['COMPLETED', '✅'], ['OVERDUE', '🔴']].map(([s, icon]) => (
+              <div key={s} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 13 }}>
+                  <span>{icon}</span> {s.replace('_', ' ')}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 80, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, ((tasks[s] || 0) / Math.max(1, stats?.counts?.totalTasks)) * 100)}%`, height: '100%', background: 'var(--accent)', borderRadius: 2 }} />
+                  </div>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', minWidth: 20, textAlign: 'right' }}>{tasks[s] || 0}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent Invoices */}
+        <div className="card">
+          <div style={{ fontWeight: 600, marginBottom: 18, fontSize: 14 }}>Recent Invoices</div>
+          {stats?.recentInvoices?.length ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {stats.recentInvoices.map((inv) => (
+                <div key={inv._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
+                  <div>
+                    <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{inv.invoiceNumber}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{inv.customer?.name} · {fmtDate(inv.createdAt)}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(inv.amount)}</div>
+                    <Badge status={inv.status} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No invoices yet</div>
+          )}
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default Dashboard;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 42 of 44: frontend/src/pages/InvoicesPage.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React, { useEffect, useState, useCallback } from 'react';
+import { invoicesAPI, customersAPI } from '../services/api';
+import Layout from '../components/Layout';
+import { Spinner, Alert, EmptyState, Badge, Modal } from '../components/UI';
+
+const EMPTY_FORM = { customer: '', amount: '', status: 'DRAFT', dueDate: '', notes: '' };
+const fmt = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+const INVOICE_STATUSES = ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED'];
+
+const InvoicesPage = () => {
+  const [data, setData] = useState({ invoices: [], total: 0 });
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [updatingId, setUpdatingId] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = filterStatus ? { status: filterStatus } : {};
+      const { data: res } = await invoicesAPI.list(params);
+      setData(res.data);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to load invoices');
+    } finally {
+      setLoading(false);
+    }
+  }, [filterStatus]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    customersAPI.list().then(({ data }) => setCustomers(data.data.customers)).catch(() => {});
+  }, []);
+
+  const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleCreate = async () => {
+    setFormError('');
+    setSaving(true);
+    try {
+      await invoicesAPI.create({ ...form, amount: parseFloat(form.amount) });
+      setShowModal(false);
+      setForm(EMPTY_FORM);
+      load();
+    } catch (e) {
+      setFormError(e.response?.data?.message || 'Failed to create invoice');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStatusChange = async (id, status) => {
+    setUpdatingId(id);
+    try {
+      await invoicesAPI.updateStatus(id, status);
+      load();
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to update status');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  return (
+    <Layout>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Invoices</div>
+          <div className="page-subtitle">{data.total} total invoices</div>
+        </div>
+        <button
+          className="btn btn-primary"
+          onClick={() => { setShowModal(true); setFormError(''); setForm(EMPTY_FORM); }}
+        >
+          + New Invoice
+        </button>
+      </div>
+
+      <div className="card">
+        {/* Status Filter Tabs */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          {['', ...INVOICE_STATUSES].map((s) => (
+            <button
+              key={s || 'all'}
+              className={`btn btn-sm ${filterStatus === s ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setFilterStatus(s)}
+            >
+              {s || 'All'}
+            </button>
+          ))}
+        </div>
+
+        {error && <Alert>{error}</Alert>}
+
+        {loading ? (
+          <div style={{ display: 'flex', gap: 10, padding: '20px 0', color: 'var(--text-muted)' }}>
+            <Spinner /> Loading…
+          </div>
+        ) : data.invoices.length === 0 ? (
+          <EmptyState icon="🧾" message="No invoices yet. Create your first one!" />
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Customer</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Due Date</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.invoices.map((inv) => (
+                  <tr key={inv._id}>
+                    <td className="primary mono">{inv.invoiceNumber}</td>
+                    <td>
+                      <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{inv.customer?.name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{inv.customer?.company}</div>
+                    </td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(inv.amount)}</td>
+                    <td><Badge status={inv.status} /></td>
+                    <td>{inv.dueDate ? fmtDate(inv.dueDate) : '—'}</td>
+                    <td>{fmtDate(inv.createdAt)}</td>
+                    <td>
+                      {updatingId === inv._id ? (
+                        <Spinner />
+                      ) : (
+                        <select
+                          className="form-select"
+                          style={{ padding: '5px 8px', width: 'auto', fontSize: 12 }}
+                          value={inv.status}
+                          onChange={(e) => handleStatusChange(inv._id, e.target.value)}
+                          disabled={inv.status === 'CANCELLED' || inv.status === 'PAID'}
+                        >
+                          {INVOICE_STATUSES.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <Modal
+          title="New Invoice"
+          onClose={() => setShowModal(false)}
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleCreate} disabled={saving}>
+                {saving ? <Spinner /> : 'Create Invoice'}
+              </button>
+            </>
+          }
+        >
+          {formError && <Alert>{formError}</Alert>}
+
+          <div className="form-group">
+            <label className="form-label">Customer *</label>
+            <select className="form-select" name="customer" value={form.customer} onChange={handleChange} required>
+              <option value="">Select customer…</option>
+              {customers.map((c) => (
+                <option key={c._id} value={c._id}>{c.name} ({c.company || c.email})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Amount (₹) *</label>
+              <input
+                className="form-input" type="number" name="amount" min="0" step="0.01"
+                value={form.amount} onChange={handleChange} placeholder="0.00" required
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select className="form-select" name="status" value={form.status} onChange={handleChange}>
+                {INVOICE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Due Date</label>
+            <input className="form-input" type="date" name="dueDate" value={form.dueDate} onChange={handleChange} />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Notes</label>
+            <input
+              className="form-input" name="notes" value={form.notes} onChange={handleChange}
+              placeholder="Optional notes or payment terms"
+            />
+          </div>
+        </Modal>
+      )}
+    </Layout>
+  );
+};
+
+export default InvoicesPage;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 43 of 44: frontend/src/pages/TasksPage.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import React, { useEffect, useState, useCallback } from 'react';
+import { tasksAPI, customersAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import Layout from '../components/Layout';
+import { Spinner, Alert, EmptyState, Badge, Modal } from '../components/UI';
+
+const EMPTY_FORM = { title: '', description: '', customer: '', dueDate: '', priority: 'MEDIUM', status: 'PENDING' };
+
+const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+const isOverdue = (task) => task.status !== 'COMPLETED' && new Date(task.dueDate) < new Date();
+
+const TasksPage = () => {
+  const { user } = useAuth();
+  const [data, setData] = useState({ tasks: [], total: 0 });
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [editingStatus, setEditingStatus] = useState(null); // { taskId, status }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = filterStatus ? { status: filterStatus } : {};
+      const { data: res } = await tasksAPI.list(params);
+      setData(res.data);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
+  }, [filterStatus]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    customersAPI.list().then(({ data }) => setCustomers(data.data.customers)).catch(() => {});
+  }, []);
+
+  const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleCreate = async () => {
+    setFormError('');
+    setSaving(true);
+    try {
+      await tasksAPI.create({ ...form, assignedTo: user.id });
+      setShowModal(false);
+      setForm(EMPTY_FORM);
+      load();
+    } catch (e) {
+      setFormError(e.response?.data?.message || 'Failed to create task');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStatusUpdate = async (taskId, status) => {
+    try {
+      await tasksAPI.update(taskId, { status });
+      setEditingStatus(null);
+      load();
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  const STATUS_OPTIONS = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE'];
+
+  return (
+    <Layout>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Tasks</div>
+          <div className="page-subtitle">{data.total} total tasks</div>
+        </div>
+        <button className="btn btn-primary" onClick={() => { setShowModal(true); setFormError(''); setForm(EMPTY_FORM); }}>
+          + New Task
+        </button>
+      </div>
+
+      <div className="card">
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {['', ...STATUS_OPTIONS].map((s) => (
+            <button
+              key={s || 'all'}
+              className={`btn btn-sm ${filterStatus === s ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setFilterStatus(s)}
+            >
+              {s || 'All'}
+            </button>
+          ))}
+        </div>
+
+        {error && <Alert>{error}</Alert>}
+
+        {loading ? (
+          <div style={{ display: 'flex', gap: 10, padding: '20px 0', color: 'var(--text-muted)' }}><Spinner /> Loading…</div>
+        ) : data.tasks.length === 0 ? (
+          <EmptyState icon="✓" message="No tasks found. Create your first task!" />
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Customer</th>
+                  <th>Due Date</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.tasks.map((t) => (
+                  <tr key={t._id}>
+                    <td className="primary">{t.title}</td>
+                    <td>{t.customer?.name || '—'}</td>
+                    <td style={{ color: isOverdue(t) ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                      {fmtDate(t.dueDate)}
+                    </td>
+                    <td><Badge priority={t.priority} /></td>
+                    <td>
+                      {editingStatus?.taskId === t._id ? (
+                        <select
+                          className="form-select" style={{ padding: '4px 8px', width: 'auto' }}
+                          value={editingStatus.status}
+                          onChange={(e) => setEditingStatus({ taskId: t._id, status: e.target.value })}
+                          onBlur={() => handleStatusUpdate(t._id, editingStatus.status)}
+                          autoFocus
+                        >
+                          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        <Badge status={t.status} />
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setEditingStatus({ taskId: t._id, status: t.status })}
+                      >
+                        Edit Status
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <Modal
+          title="New Task"
+          onClose={() => setShowModal(false)}
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleCreate} disabled={saving}>
+                {saving ? <Spinner /> : 'Create Task'}
+              </button>
+            </>
+          }
+        >
+          {formError && <Alert>{formError}</Alert>}
+          <div className="form-group">
+            <label className="form-label">Title *</label>
+            <input className="form-input" name="title" value={form.title} onChange={handleChange} placeholder="Task title" required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Description</label>
+            <input className="form-input" name="description" value={form.description} onChange={handleChange} placeholder="Optional description" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Customer *</label>
+            <select className="form-select" name="customer" value={form.customer} onChange={handleChange} required>
+              <option value="">Select customer…</option>
+              {customers.map((c) => <option key={c._id} value={c._id}>{c.name} ({c.company || c.email})</option>)}
+            </select>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Due Date *</label>
+              <input className="form-input" type="date" name="dueDate" value={form.dueDate} onChange={handleChange} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Priority</label>
+              <select className="form-select" name="priority" value={form.priority} onChange={handleChange}>
+                {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </Layout>
+  );
+};
+
+export default TasksPage;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 44 of 44: frontend/src/services/api.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import axios from 'axios';
+
+const BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
+
+const api = axios.create({
+  baseURL: BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// Attach JWT to every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('smeflow_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Global response error handler
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('smeflow_token');
+      localStorage.removeItem('smeflow_user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(err);
+  }
+);
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+export const authAPI = {
+  signup: (data) => api.post('/auth/signup', data),
+  login: (data) => api.post('/auth/login', data),
+  getMe: () => api.get('/auth/me'),
+};
+
+// ── Customers ────────────────────────────────────────────────────────────────
+export const customersAPI = {
+  list: (params) => api.get('/customers', { params }),
+  get: (id) => api.get(`/customers/${id}`),
+  create: (data) => api.post('/customers', data),
+  update: (id, data) => api.patch(`/customers/${id}`, data),
+  delete: (id) => api.delete(`/customers/${id}`),
+};
+
+// ── Tasks ────────────────────────────────────────────────────────────────────
+export const tasksAPI = {
+  list: (params) => api.get('/tasks', { params }),
+  get: (id) => api.get(`/tasks/${id}`),
+  create: (data) => api.post('/tasks', data),
+  update: (id, data) => api.patch(`/tasks/${id}`, data),
+  delete: (id) => api.delete(`/tasks/${id}`),
+};
+
+// ── Invoices ─────────────────────────────────────────────────────────────────
+export const invoicesAPI = {
+  list: (params) => api.get('/invoices', { params }),
+  get: (id) => api.get(`/invoices/${id}`),
+  create: (data) => api.post('/invoices', data),
+  updateStatus: (id, status) => api.patch(`/invoices/${id}`, { status }),
+  dashboard: () => api.get('/invoices/dashboard/stats'),
+};
+
+export default api;
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+END OF FILE — 44 files total
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
