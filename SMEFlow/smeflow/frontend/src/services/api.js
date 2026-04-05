@@ -21,7 +21,7 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('smeflow_token');
       localStorage.removeItem('smeflow_user');
-      window.location.href = '/login';
+      window.location.href = '/';
     }
     return Promise.reject(err);
   }

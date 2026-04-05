@@ -73,23 +73,23 @@ const TasksPage = () => {
     <Layout>
       <div className="page-header">
         <div>
-          <div className="page-title">Tasks</div>
+          <div className="page-title">✓ Tasks</div>
           <div className="page-subtitle">{data.total} total tasks</div>
         </div>
         <button className="btn btn-primary" onClick={() => { setShowModal(true); setFormError(''); setForm(EMPTY_FORM); }}>
-          + New Task
+          ➕ New Task
         </button>
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
           {['', ...STATUS_OPTIONS].map((s) => (
             <button
               key={s || 'all'}
               className={`btn btn-sm ${filterStatus === s ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setFilterStatus(s)}
             >
-              {s || 'All'}
+              {s ? s.replace('_', ' ') : 'All Tasks'}
             </button>
           ))}
         </div>

@@ -57,7 +57,6 @@ customerSchema.virtual('invoices', {
 });
 
 // Indexes for performant queries
-customerSchema.index({ email: 1 });
 customerSchema.index({ company: 1 });
 customerSchema.index({ createdBy: 1 });
 

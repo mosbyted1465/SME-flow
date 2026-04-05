@@ -3,19 +3,39 @@ import React from 'react';
 export const Spinner = () => <span className="spinner" />;
 
 export const Alert = ({ type = 'error', children }) => (
-  <div className={`alert alert-${type}`}>{children}</div>
+  <div className={`alert alert-${type}`}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {type === 'error' && '✕'}
+      {type === 'success' && '✓'}
+      <span>{children}</span>
+    </div>
+  </div>
 );
 
 export const Badge = ({ status, priority }) => {
   const val = (status || priority || '').toUpperCase();
   const map = {
-    PENDING: 'badge-gray', IN_PROGRESS: 'badge-blue', COMPLETED: 'badge-green',
-    OVERDUE: 'badge-red', HIGH_PRIORITY: 'badge-red',
-    LOW: 'badge-gray', MEDIUM: 'badge-blue', HIGH: 'badge-yellow', CRITICAL: 'badge-red',
-    DRAFT: 'badge-gray', SENT: 'badge-blue', PAID: 'badge-green', CANCELLED: 'badge-red',
+    PENDING: 'badge-gray', 
+    IN_PROGRESS: 'badge-blue', 
+    COMPLETED: 'badge-green',
+    OVERDUE: 'badge-red', 
+    HIGH_PRIORITY: 'badge-red',
+    LOW: 'badge-gray', 
+    MEDIUM: 'badge-blue', 
+    HIGH: 'badge-yellow', 
+    CRITICAL: 'badge-red',
+    DRAFT: 'badge-gray', 
+    SENT: 'badge-blue', 
+    PAID: 'badge-green', 
+    CANCELLED: 'badge-red',
   };
   const cls = map[val] || 'badge-gray';
-  return <span className={`badge ${cls}`}>{val.replace('_', ' ')}</span>;
+  return (
+    <span className={`badge ${cls}`}>
+      <span style={{ fontSize: 10, marginRight: 4 }}>●</span>
+      {val.replace('_', ' ')}
+    </span>
+  );
 };
 
 export const EmptyState = ({ icon = '📭', message = 'No records found' }) => (
@@ -30,9 +50,11 @@ export const Modal = ({ title, onClose, children, footer }) => (
     <div className="modal">
       <div className="modal-header">
         <span className="modal-title">{title}</span>
-        <button className="modal-close" onClick={onClose}>×</button>
+        <button className="modal-close" onClick={onClose}>✕</button>
       </div>
-      {children}
+      <div style={{ marginBottom: footer ? '0' : '0' }}>
+        {children}
+      </div>
       {footer && <div className="modal-footer">{footer}</div>}
     </div>
   </div>

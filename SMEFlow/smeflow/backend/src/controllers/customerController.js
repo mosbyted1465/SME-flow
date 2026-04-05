@@ -12,17 +12,17 @@ const getCustomers = asyncHandler(async (req, res) => {
 });
 
 const getCustomer = asyncHandler(async (req, res) => {
-  const customer = await customerService.getCustomerById(req.params.id);
+  const customer = await customerService.getCustomerById(req.params.id, req.user._id);
   res.status(200).json({ status: 'success', data: { customer } });
 });
 
 const updateCustomer = asyncHandler(async (req, res) => {
-  const customer = await customerService.updateCustomer(req.params.id, req.body);
+  const customer = await customerService.updateCustomer(req.params.id, req.body, req.user._id);
   res.status(200).json({ status: 'success', data: { customer } });
 });
 
 const deleteCustomer = asyncHandler(async (req, res) => {
-  await customerService.deleteCustomer(req.params.id);
+  await customerService.deleteCustomer(req.params.id, req.user._id);
   res.status(204).json({ status: 'success', data: null });
 });
 

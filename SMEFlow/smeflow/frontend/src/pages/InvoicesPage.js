@@ -72,27 +72,27 @@ const InvoicesPage = () => {
     <Layout>
       <div className="page-header">
         <div>
-          <div className="page-title">Invoices</div>
+          <div className="page-title">🧾 Invoices</div>
           <div className="page-subtitle">{data.total} total invoices</div>
         </div>
         <button
           className="btn btn-primary"
           onClick={() => { setShowModal(true); setFormError(''); setForm(EMPTY_FORM); }}
         >
-          + New Invoice
+          ➕ New Invoice
         </button>
       </div>
 
       <div className="card">
         {/* Status Filter Tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
           {['', ...INVOICE_STATUSES].map((s) => (
             <button
               key={s || 'all'}
               className={`btn btn-sm ${filterStatus === s ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setFilterStatus(s)}
             >
-              {s || 'All'}
+              {s || 'All Invoices'}
             </button>
           ))}
         </div>

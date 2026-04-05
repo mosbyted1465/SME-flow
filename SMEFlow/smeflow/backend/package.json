@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "seed:local": "node scripts/seedLocalData.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

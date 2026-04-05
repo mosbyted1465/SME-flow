@@ -2,6 +2,8 @@ const User = require('../models/User');
 const { verifyToken } = require('../services/authService');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
+const { isLocalDataMode } = require('../config/dataMode');
+const localStore = require('../data/localStore');
 
 /**
  * Protect middleware: validates JWT from Authorization header.
@@ -26,7 +28,9 @@ const protect = asyncHandler(async (req, res, next) => {
     throw new AppError('Invalid authentication token.', 401);
   }
 
-  const user = await User.findById(decoded.id).select('-password');
+  const user = isLocalDataMode()
+    ? await localStore.findUserById(decoded.id)
+    : await User.findById(decoded.id).select('-password');
   if (!user || !user.isActive) {
     throw new AppError('The user associated with this token no longer exists.', 401);
   }

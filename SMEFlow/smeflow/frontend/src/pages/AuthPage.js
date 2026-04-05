@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Alert, Spinner } from '../components/UI';
 
 const AuthPage = () => {
-  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  const location = useLocation();
+  const mode = location.pathname === '/register' ? 'signup' : 'login';
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, signup } = useAuth();
+  const { login, signup, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -34,9 +39,10 @@ const AuthPage = () => {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <Link to="/" className="auth-back-link">← Back to home</Link>
         <div className="auth-logo"><span>SME</span>Flow</div>
         <div className="auth-tagline">
-          {mode === 'login' ? 'Sign in to your workspace' : 'Create your account'}
+          {mode === 'login' ? 'Welcome back! 👋' : 'Join SMEFlow today 🚀'}
         </div>
 
         {error && <Alert type="error">{error}</Alert>}
@@ -46,39 +52,50 @@ const AuthPage = () => {
             <div className="form-group">
               <label className="form-label">Full Name</label>
               <input
-                className="form-input" name="name" value={form.name}
-                onChange={handleChange} placeholder="Jane Smith" required
+                className="form-input" 
+                name="name" 
+                value={form.name}
+                onChange={handleChange} 
+                placeholder="Jane Smith" 
+                required 
               />
             </div>
           )}
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label">Email Address</label>
             <input
-              className="form-input" type="email" name="email" value={form.email}
-              onChange={handleChange} placeholder="you@company.com" required
+              className="form-input" 
+              type="email" 
+              name="email" 
+              value={form.email}
+              onChange={handleChange} 
+              placeholder="you@company.com" 
+              required 
             />
           </div>
           <div className="form-group">
             <label className="form-label">Password</label>
             <input
-              className="form-input" type="password" name="password" value={form.password}
-              onChange={handleChange} placeholder={mode === 'signup' ? 'At least 8 characters' : '••••••••'} required
+              className="form-input" 
+              type="password" 
+              name="password" 
+              value={form.password}
+              onChange={handleChange} 
+              placeholder={mode === 'signup' ? 'At least 8 characters' : '••••••••'} 
+              required 
             />
           </div>
 
-          <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
-            {loading ? <Spinner /> : (mode === 'login' ? 'Sign In' : 'Create Account')}
+          <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
+            {loading ? <><Spinner /> Processing…</> : (mode === 'login' ? 'Sign In' : 'Create Account')}
           </button>
         </form>
 
         <p className="auth-switch">
           {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-          <button
-            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}
-            style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px' }}
-          >
+          <Link to={mode === 'login' ? '/register' : '/login'} onClick={() => setError('')}>
             {mode === 'login' ? 'Sign up' : 'Sign in'}
-          </button>
+          </Link>
         </p>
       </div>
     </div>

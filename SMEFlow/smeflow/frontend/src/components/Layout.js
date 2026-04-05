@@ -15,7 +15,7 @@ const Layout = ({ children }) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const initials = user?.name
@@ -30,7 +30,7 @@ const Layout = ({ children }) => {
       <aside className="sidebar">
         <div className="sidebar-logo">
           <h1><span>SME</span>Flow</h1>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>CRM & Automation</div>
+          <div>CRM & Automation</div>
         </div>
 
         <nav className="sidebar-nav">
@@ -39,9 +39,10 @@ const Layout = ({ children }) => {
               key={to}
               to={to}
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+              title={label}
             >
               <span className="nav-icon">{icon}</span>
-              {label}
+              <span>{label}</span>
             </NavLink>
           ))}
         </nav>

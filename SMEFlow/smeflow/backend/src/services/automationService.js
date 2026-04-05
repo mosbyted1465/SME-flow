@@ -1,6 +1,8 @@
 const cron = require('node-cron');
 const Task = require('../models/Task');
 const logger = require('../utils/logger');
+const { isLocalDataMode } = require('../config/dataMode');
+const localStore = require('../data/localStore');
 
 /**
  * Core automation logic: find all non-completed tasks past their due date
@@ -14,19 +16,33 @@ const escalateOverdueTasks = async () => {
   logger.info(`[Automation] Running overdue task escalation at ${now.toISOString()}`);
 
   try {
-    const result = await Task.updateMany(
-      {
-        dueDate: { $lt: now },
-        status: { $nin: ['COMPLETED', 'OVERDUE'] },
-      },
-      {
-        $set: {
-          status: 'OVERDUE',
-          priority: 'HIGH_PRIORITY',
-          autoEscalatedAt: now,
-        },
-      }
-    );
+    const result = isLocalDataMode()
+      ? await localStore.updateManyTasks(
+          {
+            dueDate: { $lt: now },
+            status: { $nin: ['COMPLETED', 'OVERDUE'] },
+          },
+          {
+            $set: {
+              status: 'OVERDUE',
+              priority: 'HIGH_PRIORITY',
+              autoEscalatedAt: now,
+            },
+          }
+        )
+      : await Task.updateMany(
+          {
+            dueDate: { $lt: now },
+            status: { $nin: ['COMPLETED', 'OVERDUE'] },
+          },
+          {
+            $set: {
+              status: 'OVERDUE',
+              priority: 'HIGH_PRIORITY',
+              autoEscalatedAt: now,
+            },
+          }
+        );
 
     logger.info(
       `[Automation] Escalated ${result.modifiedCount} overdue task(s). ` +

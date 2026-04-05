@@ -2,6 +2,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
+const bcrypt = require('bcryptjs');
+const { isLocalDataMode } = require('../config/dataMode');
+const localStore = require('../data/localStore');
 
 /**
  * Generates a signed JWT token for the given user ID.
@@ -16,12 +19,16 @@ const signToken = (userId) => {
  * Registers a new user and returns a JWT.
  */
 const signup = async ({ name, email, password }) => {
-  const existingUser = await User.findOne({ email });
+  const existingUser = isLocalDataMode()
+    ? await localStore.findUserByEmail(email)
+    : await User.findOne({ email });
   if (existingUser) {
     throw new AppError('A user with this email already exists.', 409);
   }
 
-  const user = await User.create({ name, email, password });
+  const user = isLocalDataMode()
+    ? await localStore.createUser({ name, email, password })
+    : await User.create({ name, email, password });
   const token = signToken(user._id);
 
   logger.info(`New user registered: ${user.email} (${user._id})`);
@@ -42,12 +49,16 @@ const signup = async ({ name, email, password }) => {
  */
 const login = async ({ email, password }) => {
   // Explicitly select password since it's excluded by default
-  const user = await User.findOne({ email, isActive: true }).select('+password');
+  const user = isLocalDataMode()
+    ? await localStore.findUserByEmail(email, { includePassword: true, activeOnly: true })
+    : await User.findOne({ email, isActive: true }).select('+password');
   if (!user) {
     throw new AppError('Invalid email or password.', 401);
   }
 
-  const isPasswordValid = await user.comparePassword(password);
+  const isPasswordValid = isLocalDataMode()
+    ? await bcrypt.compare(password, user.password)
+    : await user.comparePassword(password);
   if (!isPasswordValid) {
     throw new AppError('Invalid email or password.', 401);
   }

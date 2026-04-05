@@ -1,0 +1,7 @@
+backend/.env
+backend/logs/
+backend/node_modules/
+frontend/node_modules/
+
+# Keep app lockfiles if you want to commit them later, but ignore the accidental root one.
+/package-lock.json
